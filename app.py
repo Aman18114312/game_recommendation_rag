@@ -19,8 +19,8 @@ import chromadb
 
 load_dotenv()
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-os.environ["ANTHROPIC_API_KEY"] = ANTHROPIC_API_KEY
+# ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+# os.environ["ANTHROPIC_API_KEY"] = ANTHROPIC_API_KEY
 
 PERSIST_DIR = "./vectorDB"
 
