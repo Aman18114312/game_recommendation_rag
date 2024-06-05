@@ -1,0 +1,123 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
+import streamlit as st
+import time
+import requests
+import os
+from dotenv import load_dotenv
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings, PromptTemplate, StorageContext, load_index_from_storage
+from llama_index.llms.anthropic import Anthropic
+from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from langchain_community.document_loaders.csv_loader import CSVLoader
+from llama_index.core import SimpleDirectoryReader
+
+import sqlite3
+import chromadb
+
+load_dotenv()
+
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+os.environ["ANTHROPIC_API_KEY"] = ANTHROPIC_API_KEY
+
+PERSIST_DIR = "./vectorDB"
+
+st.subheader("PLAY EPIC 🤖 ")
+
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "unique_ids" not in st.session_state:
+    st.session_state.unique_ids = []
+
+@st.cache_resource   
+def load_model(ANTHROPIC_API_KEY):
+    embed_model = HuggingFaceEmbedding(model_name="Snowflake/snowflake-arctic-embed-m")
+    Settings.embed_model = embed_model
+    Settings.llm = Anthropic(model="claude-3-haiku-20240307")
+
+    documents = SimpleDirectoryReader("./data").load_data()
+
+    db = chromadb.PersistentClient(path=PERSIST_DIR)
+    chroma_collection = db.get_or_create_collection("games")
+    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+        
+    if not (os.path.exists(os.path.join(PERSIST_DIR,'index'))):
+        storage_context = StorageContext.from_defaults(vector_store=vector_store)
+        vector_index = VectorStoreIndex.from_documents(documents, storage_context=storage_context)
+    else:
+        print("loading from storage")
+        storage_context = StorageContext.from_defaults(vector_store=vector_store, persist_dir=f"{PERSIST_DIR}/index")
+        vector_index = load_index_from_storage(storage_context)
+
+    if not (os.path.join(PERSIST_DIR,'index')):
+        print("creating index")
+        vector_index.storage_context.persist(persist_dir=f"{PERSIST_DIR}/index")
+
+    Settings.vector_index = vector_index
+
+    tokenizer = Anthropic().tokenizer
+    Settings.tokenizer = tokenizer
+
+    qa_prompt_tmpl_str = (
+        "Context information is below.\n"
+        "---------------------\n"
+        "{context_str}\n"
+        "---------------------\n"
+        "Given the context information and not prior knowledge, "
+        "answer the query as a best game recommender. In case you don't know the answer say\n"
+        "'I dont't know!' \n"
+        "Query: {query_str}\n"
+        "Answer: "
+    )
+    qa_prompt_tmpl = PromptTemplate(qa_prompt_tmpl_str)
+
+    query_engine = vector_index.as_query_engine(similarity_top_k=4)
+    query_engine.update_prompts({"response_synthesizer:text_qa_template": qa_prompt_tmpl})
+
+    return query_engine
+
+if ANTHROPIC_API_KEY := st.text_input(label="Enter Anthropic API key", type="password", placeholder="sk-ant-..."):
+    st.session_state.api_key = ANTHROPIC_API_KEY
+    os.environ["ANTHROPIC_API_KEY"] = ANTHROPIC_API_KEY
+
+if ANTHROPIC_API_KEY:
+    query_engine = load_model(ANTHROPIC_API_KEY)
+    st.write("Bot ready ✅")
+
+# Display chat messages from history on app rerun
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+        
+try:
+    if prompt := st.chat_input("What's the play mood?!"):
+            st.write("")
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+            
+            with st.chat_message("assistant"):
+                with st.spinner("Collecting answer"):
+                    message_placeholder = st.empty()
+                    full_response = ""
+                    result = query_engine.query(prompt)
+                    assistant_response = str(result)
+
+            for chunk in assistant_response:
+                full_response += chunk + ""
+                time.sleep(0.01)
+                message_placeholder.markdown(full_response + "▌")
+
+            message_placeholder.markdown(full_response)
+
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": full_response
+            })
+except Exception as err:
+    st.error(f"API Key Error: {err}")
+    exit()
