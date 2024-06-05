@@ -37,7 +37,7 @@ if "unique_ids" not in st.session_state:
 def load_model(ANTHROPIC_API_KEY):
     embed_model = HuggingFaceEmbedding(model_name="Snowflake/snowflake-arctic-embed-m")
     Settings.embed_model = embed_model
-    Settings.llm = Anthropic(model="claude-3-haiku-20240307")
+    Settings.llm = Anthropic(model="claude-3-opus-20240229")
 
     documents = SimpleDirectoryReader("./data").load_data()
 
