@@ -1,1 +1,33 @@
+# deployments
+pysqlite3-binary
+
+# UI
+streamlit
+
+# scraping
+google-search-results
+
+# llama_index
+llama_index
+llama-index-llms-anthropic
+chromadb
+llama-index-vector-stores-chroma
+llama-index-embeddings-huggingface
+
+# langchain
+langchain
+langchain-community
+langchain-text-splitters
+unstructured
+langchain-anthropic
+llama-index-llms-langchain
+
+# eval
+ragas
+transformers
+sentence-transformers
+# spacy
+
+# miscellaneous
 python-dotenv
+uuid
