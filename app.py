@@ -24,7 +24,7 @@ load_dotenv()
 
 PERSIST_DIR = "./vectorDB"
 
-st.subheader("PLAY EPIC 🤖 ")
+st.subheader("GAME SAGE 🤖 ")
 
 
 if "messages" not in st.session_state:
