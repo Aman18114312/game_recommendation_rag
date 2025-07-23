@@ -1,1 +1,2 @@
 python-dotenv
+pyarrow==20.0.0
