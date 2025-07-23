@@ -30,3 +30,5 @@ sentence-transformers
 
 # miscellaneous
 python-dotenv
+
+pyarrow==20.0.0
